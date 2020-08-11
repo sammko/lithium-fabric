@@ -9,27 +9,20 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(BiomeLayerSampler.class)
 public abstract class BiomeLayerSamplerMixin {
     private ThreadLocal<CachingLayerSampler> tlSampler;
 
-    @Shadow
-    protected abstract Biome getBiome(int id);
-
     @Inject(method = "<init>", at = @At("RETURN"))
-    private void init(LayerFactory<CachingLayerSampler> factory, CallbackInfo ci) {
+    private void init(LayerFactory<CachingLayerSampler> factory) {
         this.tlSampler = ThreadLocal.withInitial(factory::make);
     }
 
-    /**
-     * @reason Replace with implementation that accesses the thread-local sampler
-     * @author gegy1000
-     */
-    @Overwrite
-    public Biome sample(int x, int y) {
-        CachingLayerSampler tlSampler = this.tlSampler.get();
-        return this.getBiome(tlSampler.sample(x, y));
+    @Redirect(method = "sample", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/biome/layer/util/CachingLayerSampler;sample(II)I"))
+    public int sample(int x, int y) {
+        return this.tlSampler.get().sample(x, y);
     }
 }
